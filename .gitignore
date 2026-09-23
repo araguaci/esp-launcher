@@ -1,4 +1,5 @@
 .pio
+.firecrawl
 .vscode
 *.bin
 include/webFiles.h
