@@ -20,15 +20,15 @@ const worker = readFileSync(path.join(here, "pwa", "sw.mjs"), "utf8").replaceAll
 writeFileSync(path.join(buildDir, "sw.js"), worker);
 
 const headTags = `
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#111417" />
-    <link rel="icon" href="/icons/icon-192.png" sizes="192x192" />
-    <link rel="apple-touch-icon" href="/icons/icon-192.png" />`;
+    <link rel="icon" href="icons/icon-192.png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />`;
 
 const boot = `
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/sw.js");
+        navigator.serviceWorker.register("sw.js");
       }
     </script>`;
 
