@@ -62,6 +62,7 @@
             - { env: "m5stack-paper-s3"           }
             - { env: "m5stack-paper"              }
             - { env: "m5stack-paper-color"        }
+            - { env: "m5stack-paper-diy"          }
             - { env: "m5stack-paper-mono"         }
             - { env: "m5stack-sticks3"            }
             - { env: "headless-esp32s3-4mb"       }
@@ -72,6 +73,7 @@
             - { env: "headless-xiao-esp32s3-8mb"  }
             - { env: "headless-xiao-esp32s3-16mb" }
             - { env: "headless-xiao-esp32c5-8mb"  }
+            - { env: "heltec-lora32-expansion-v2" }
             - { env: "CYD-2432S028"               }
             - { env: "CYD-2-USB"                  }
             - { env: "CYD-2432W328C_2"            }
@@ -107,10 +109,13 @@
             - { env: "lilygo-t-watch-s3"          }
             - { env: "lilygo-t-watch-ultra"       }
             - { env: "reaper"                     }
+            - { env: "renphone-accretion"        }
+            - { env: "seeedstudio-esp32s3-touch-147" }
             - { env: "seeedstudio-reterminal-d1001" }
             - { env: "seeedstudio-reterminal-e1001" }
             - { env: "seeedstudio-reterminal-sticky" }
             - { env: "seeedstudio-sensecap"       }
+            - { env: "seeedstudio-wio-tracker-l2" }
             - { env: "smoochiee-board"            }
             - { env: "Marauder-v4-OG"             }
             - { env: "Marauder-v61"               }
@@ -128,12 +133,16 @@
             - { env: "elecrow-35Bv2_2"            }
             - { env: "elecrow-esp32p4-7in"        }
             - { env: "elecrow-esp32s3-5in"        }
+            - { env: "elecrow-thinknode-m9"       }
             - { env: "waveshare-esp32-s3-lcd-147" }
             - { env: "waveshare-esp32-c5-lcd-147" }
+            - { env: "waveshare-esp32-c5-touch-lcd-35"}
             - { env: "waveshare-esp32-c6-lcd-147" }
             - { env: "waveshare-esp32-c6-lcd-130" }
+            - { env: "waveshare-esp32-p4-wifi6-touch-lcd-5" }
             - { env: "waveshare-esp32-s3-touch-amoled-206"}
             - { env: "ES3C28P"                    }
+            - { env: "ES3C40P"                    }
             - { env: "xteink-x3-x4"               }
             - { env: "xteink-x4pro"               }
             - { env: "xueersi-xiaomiao"           }
@@ -407,11 +416,13 @@
         env:
           M5BURNER_USER: ${{ secrets.M5BURNER_USER }}
           M5BURNER_PWD: ${{ secrets.M5BURNER_PWD }}
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.launcher_version.outputs.version }}
         run: |
-          python support_files/m5burner_post.py \
-            --user "$M5BURNER_USER" \
-            --password "$M5BURNER_PWD" \
-            --tag "${{ steps.launcher_version.outputs.version }}"
+          gh release view "$VERSION" --repo "${{ github.repository }}" --json body -q .body > m5burner_notes.md || true
+          python support_files/m5burner_publish.py \
+            --tag "$VERSION" \
+            --notes-file m5burner_notes.md
 
       - name: Trigger WebPage deploy (workflow_dispatch)
         env:

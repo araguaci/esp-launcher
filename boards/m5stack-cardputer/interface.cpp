@@ -138,6 +138,8 @@ void _post_setup_gpio() {
     // INT_STAT, which was resetting the sel/esc hold state one frame too early.
     attachInterruptArg(digitalPinToInterrupt(11), gpio_isr_handler, nullptr, FALLING);
     tca.enableInterrupts();
+    device_name = "M5Stack Cardputer ADV";
+    ota_tag = "cardputer-adv";
 }
 
 void InputHandler(void) {
@@ -373,9 +375,11 @@ void InputHandler(void) {
         if (status.fn) key.fn = true;
         key.pressed = true;
         KeyStroke = key;
-        if (Keyboard.isKeyPressed(',') || Keyboard.isKeyPressed(';')) PrevPress = true;
+        if (Keyboard.isKeyPressed(',')) PrevPress = true;
+        if (Keyboard.isKeyPressed(';')) UpPress = true;
         if (Keyboard.isKeyPressed('`') || Keyboard.isKeyPressed(KEY_BACKSPACE)) EscPress = true;
-        if (Keyboard.isKeyPressed('/') || Keyboard.isKeyPressed('.')) NextPress = true;
+        if (Keyboard.isKeyPressed('/')) NextPress = true;
+        if (Keyboard.isKeyPressed('.')) DownPress = true;
         if (Keyboard.isKeyPressed(KEY_ENTER)) SelPress = true;
         if (!KeyStroke.pressed) return;
         String keyStr = "";
@@ -393,7 +397,7 @@ void InputHandler(void) {
 void reboot() {
     launcherConsolePrintf("%s", String("\r\n").c_str());
     launcherConsoleFlush();
-    launcherConsoleEnd();
+    // launcherConsoleEnd();
     vTaskDelay(pdMS_TO_TICKS(50));
     launcherGpioInput(1);
     launcherGpioInput(2);

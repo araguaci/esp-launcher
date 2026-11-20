@@ -68,7 +68,7 @@ by the ESP-IDF `button` component instead of raw polling, gated by
   `_init` once from `_setup_gpio()`, the matching `_poll_N` every
   `InputHandler()` cycle. `count` must match which `_poll_N` you call.
   `cfg.pullup = false` for boards without internal/external pull-ups.
-- `hal_buttons_init_2(cfg, long_press_ms = 600)` / `hal_buttons_poll_2()` —
+- `hal_buttons_init_2(cfg, long_press_ms = 600, btn2ActiveHigh = false)` / `hal_buttons_poll_2()` —
   the `HAS_2_BUTTONS` pair, needs `lib_deps =
   https://github.com/bmorcelli/ESP32_Button` and `-DBUTTONS_IDF_COMPONENT=1`.
   btn1: short click → Next, double-click/hold → Sel. btn2: short click →
@@ -109,6 +109,7 @@ Touchscreen drivers selected by one `TOUCH_CTRL_*` build flag:
 | `TOUCH_CTRL_FT6X36` | FT6206/FT6236/FT6336(U)/FT3267/FT5336/FT3068 family | I2C | One driver covers the whole family — there's no separate "FT6336" driver. Polling mode (`interruptPolling()`), not IRQ-driven. |
 | `TOUCH_CTRL_GT9895` | GT9895 | I2C | Digitizer grid is larger than the panel and the chip doesn't report native resolution over I2C — the board must supply it via `DeviceTouch.raw_width`/`raw_height` (a fixed vendor/panel constant, e.g. 1060x2400). |
 | `TOUCH_CTRL_HI8561` | HI8561 | I2C | Already reports in panel coordinates, no scaling needed. |
+| `TOUCH_CTRL_AXS5106L` | AXS5106L | I2C (fixed 0x63) | Self-contained driver in `touch.cpp` (SensorLib has none). Reports raw panel-native (portrait) coordinates, so the host-side `SwapXY`/`MirrorX`/`MirrorY` path applies, same as `TOUCH_CTRL_FT6X36`. INT is only a hint — the driver still polls at ~60Hz because some modules leave it high. Boards sharing the touch RST line with the LCD must leave `DeviceTouch.pin_rst` at -1 and init touch from `_post_setup_gpio()`. |
 
 API:
 
@@ -116,7 +117,7 @@ API:
   `_setup_gpio()` (or `_post_setup_gpio()` if the panel/bus needs to come up
   first).
 - `hal_touch_read(cfg, LTouchPoint &out)` — call every `InputHandler()`
-  cycle. XPT2046/FT6X36 return a raw point and the HAL applies
+  cycle. XPT2046/FT6X36/AXS5106L return a raw point and the HAL applies
   `cfg.SwapXY`/`MirrorX`/`MirrorY` on the host side; GT911/CST8xx/GT9895/
   HI8561 hand rotation to the driver itself
   (`setSwapXY()`/`setMirrorXY()`). Either way, `MirrorX`/`MirrorY`/`SwapXY`
@@ -131,7 +132,7 @@ API:
   point further.
 - `hal_touch_read_raw(out)` / `hal_touch_get_resolution(width, height)` — a
   raw escape hatch for `TOUCH_CTRL_GT911`/`_CST8XX`/`_FT6X36`/`_GT9895`/
-  `_HI8561`: returns the point exactly as the driver reports it (no
+  `_HI8561`/`_AXS5106L`: returns the point exactly as the driver reports it (no
   swap/mirror/scaling) plus the controller's own native resolution, for a
   board whose rotation/scale math doesn't fit `hal_touch_read()`'s model
   (e.g. a panel whose native touch resolution doesn't match its pixel
@@ -173,6 +174,8 @@ support for that chip is added — don't force it through `DevicePmic`.
 - `hal_pmic_get_ntc_percent()` — battery percent estimated from the
   charger's own NTC reading, for a board with no separate fuel gauge
   (instead of `hal_pmic_get_system_voltage_mv()`).
+- `hal_pmic_is_charging()` — charger status register reports pre-charge,
+  fast charge or charge-done. Return it from the board's `isCharging()`.
 - With no `PMIC_*` macro defined, every function above is a no-op returning
   `false`/`-1`.
 
@@ -186,7 +189,13 @@ a MAX17048 or other gauge stays board-specific until HAL support is added.
   into the gauge. Leave `design_capacity_mah` at 0 (default) to skip
   `setDesignCap()` entirely.
 - `hal_gauge_get_percent()` — 0-100, or -1 if unavailable/unread.
-- `hal_gauge_is_charging()`.
+- `hal_gauge_is_charging()` — gauge's DSG flag is clear (not discharging).
+  Return it from the board's `isCharging()`.
+
+`isCharging()` (weak, `src/mykeyboard.cpp`, default `false`) is the
+board-level hook next to `getBattery()`: when it returns true the main-menu
+battery icon gets a lightning bolt (the header polls it every 3s, so
+plugging/unplugging shows up without any input).
 
 ## `bright/bright.*`
 
@@ -194,8 +203,11 @@ Backlight PWM curve, shared by every plain-PWM/ledc backlight board:
 `HAL_BRIGHT_PWM_FREQ=5000`, `HAL_BRIGHT_PWM_RES_BITS=8`,
 `duty = pwm_min + round(pow(percent/100, gamma) * (pwm_max - pwm_min))`
 with defaults `pwm_min=0, pwm_max=255, gamma=2.2` (`HalBrightCurve`). No
-board currently overrides the curve — every plain-PWM board shares the
-exact same feel on purpose.
+board overrides the min/max/gamma — every plain-PWM board shares the exact
+same feel on purpose. The one field a board does set is
+`HalBrightCurve.invert = true`, for a backlight wired active LOW (duty 0 =
+fully lit, e.g. `boards/elecrow-thinknode-m9`): it mirrors the duty inside
+the `pwm_min..pwm_max` window so the curve keeps that same feel.
 
 - `hal_bright_attach(pin)` / `hal_bright_attach(pins[], count)` — call once
   from `_post_setup_gpio()`. Attaches one or more backlight pins to ledc at

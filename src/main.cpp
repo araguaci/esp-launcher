@@ -83,6 +83,9 @@ void launcherInputUnlock();
 
 void __attribute__((weak)) taskInputHandler(void *parameter) {
     auto timer = launcherMillis();
+#ifdef E_PAPER_DISPLAY
+    unsigned long raisedAt = 0;
+#endif
     while (true) {
         checkPowerSaveTime();
         if (!AnyKeyPress || launcherMillis() - timer > 75) {
@@ -90,10 +93,50 @@ void __attribute__((weak)) taskInputHandler(void *parameter) {
             // half-written KeyStroke. It replaces the old vTaskSuspend() scheme, which could
             // freeze this task inside the allocator and deadlock loopTask - see mykeyboard.h.
             launcherInputLock();
+#ifdef E_PAPER_DISPLAY
+            // Keep button flags the UI has not consumed yet instead of wiping them every
+            // cycle, so a tap landing while loopTask is blocked in a panel refresh is still
+            // there when it returns. Judged on the flags themselves, not AnyKeyPress: check()
+            // drops AnyKeyPress on the first flag it consumes, and the rest must survive that.
+            // Not while LongPress is set: display.cpp, mykeyboard.cpp and launcherSelectHeld()
+            // poll the raw flags and need them to drop on release. Touch and keystrokes are
+            // still cleared each cycle, their readers rely on it. Bounded at 1500 ms so an
+            // event nobody reads cannot ghost into a later screen. E-paper only: that is where
+            // a redraw outlasts the 75 ms poll.
+            const bool pending = !LongPress &&
+                                 (NextPress || PrevPress || UpPress || DownPress || SelPress || EscPress) &&
+                                 launcherMillis() - raisedAt < 1500;
+            if (pending) {
+                touchPoint.Clear();
+                KeyStroke.Clear();
+            } else {
+                resetGlobals();
+            }
+            const bool hadNext = NextPress, hadPrev = PrevPress, hadUp = UpPress, hadDown = DownPress,
+                       hadSel = SelPress, hadEsc = EscPress;
+#else
             resetGlobals();
+#endif
             InputHandler();
 #ifdef USE_CARDKB2
             cardkb2_poll();
+#endif
+#ifdef E_PAPER_DISPLAY
+            if (pending) {
+                // Only one unread event at a time. The flags carry no order, so a second press
+                // stacked on an unread one would be applied in whatever order the UI polls them
+                // (move-then-confirm when the user did confirm-then-move). Drop what this poll
+                // newly raised, as every poll did before retention; a flag the handler cleared
+                // stays cleared so a press check() consumed meanwhile is never put back.
+                if (!hadNext) NextPress = false;
+                if (!hadPrev) PrevPress = false;
+                if (!hadUp) UpPress = false;
+                if (!hadDown) DownPress = false;
+                if (!hadSel) SelPress = false;
+                if (!hadEsc) EscPress = false;
+            } else if (NextPress || PrevPress || UpPress || DownPress || SelPress || EscPress) {
+                raisedAt = launcherMillis();
+            }
 #endif
             launcherInputUnlock();
             timer = launcherMillis();
@@ -112,7 +155,7 @@ int bright = 100;
 bool dimmer = false;
 int prog_handler; // 0 - Flash, 1 - SPIFFS
 int currentIndex;
-int rotation = ROTATION;
+int rotation = ROTATION + ROT_OFFSET;
 bool sdcardMounted;
 bool onlyBins;
 bool bootToApp = true;
@@ -193,21 +236,24 @@ void setup() {
     RAM_LOG("after-nvs-partition-defaults");
 
 #if BOOT_LOGIC_ON_NVS
-    lnvs::Handle nvsHandle("launcher", true);
     bool init = false;
-    if (!lnvs::getBool(nvsHandle.raw(), "init", init)) {
-        lnvs::setBool(nvsHandle.raw(), "init", false);
-        nvsHandle.commit();
-        init = false;
+    {
+        lnvs::Handle nvsHandle("launcher", true);
+        if (!lnvs::getBool(nvsHandle.raw(), "init", init)) {
+            lnvs::setBool(nvsHandle.raw(), "init", false);
+            nvsHandle.commit();
+            init = false;
+        }
+        if (init) { // restart com eeprom em 1
+            lnvs::setBool(nvsHandle.raw(), "init", false);
+            nvsHandle.commit();
+        } else {
+            lnvs::setBool(nvsHandle.raw(), "init", true);
+            nvsHandle.commit();
+        }
     }
-    if (init) { // restart com eeprom em 1
-        lnvs::setBool(nvsHandle.raw(), "init", false);
-        nvsHandle.commit();
-        ESP.restart();
-    } else {
-        lnvs::setBool(nvsHandle.raw(), "init", true);
-        nvsHandle.commit();
-    }
+    if(init) ESP.restart();
+
 #endif
 
 // Setup GPIOs and stuff
@@ -261,16 +307,18 @@ void setup() {
         tftWidth = displayConfig.width;
     }
     tft->fillScreen(BGCOLOR);
-    setBrightness(bright, false);
     initDisplay(true);
     RAM_LOG("after-first-display");
+
+    // Init post setup GPIO before SD Card initializes
+    _post_setup_gpio();
+
+    // Set Brightness to the value stored in NVS, or default if not set
+    _setBrightness(bright);
 
     // Performs the verification when Launcher is installed through OTA
     partitionCrawler();
     RAM_LOG("after-partitionCrawler");
-
-    // Init post setup GPIO before SD Card initializes
-    _post_setup_gpio();
 
 #if defined(HAS_RESISTIVE_TOUCH)
     if (!loadTouchCalibration()) calibrateTouch();
@@ -520,6 +568,23 @@ void loop() {
                 resetGlobals(); // avoid leaking command after menu is shown
             }
         }
+#ifndef E_PAPER_DISPLAY
+#define REFRESH_TIME_CHARGE 3000 // 3 seconds
+#else
+#define REFRESH_TIME_CHARGE 300000 // 5 minutes
+#endif
+        // Plugging/unplugging the charger raises no input event, so poll the header icons.
+        static unsigned long statusTmr = 0;
+        if (launcherMillis() - statusTmr > REFRESH_TIME_CHARGE) {
+            statusTmr = launcherMillis();
+            if (drawStatusIcons(false)) tft->display(false);
+        }
+
+#ifdef E_PAPER_DISPLAY
+        // Back has no action on the main menu. Consume it so an unread Escape
+        // cannot keep the input task from accepting navigation or Select.
+        check(EscPress);
+#endif
         if (touchPoint.pressed) {
             int i = 0;
             for (auto item : menuItems) {

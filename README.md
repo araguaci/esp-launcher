@@ -13,6 +13,8 @@ Join our [Discord community](https://discord.gg/BE9by2a2FF)
 * Use M5Burner, or
 * Download the .bin file from Releases for your device and use https://web.esphome.io/ or esptool.py to flash the file `Launcher-{YourDevice}.bin` to your device.
 
+For the [Heltec WiFi LoRa 32 Expansion Kit V2](boards/heltec-lora32-expansion-v2/connections.md), see the board guide for installation, button controls and recovery.
+
 ## How to Use
 * Turn your device on
 * Press Sel (Enter) on the Launcher start screen to get into Launcher
@@ -98,20 +100,37 @@ Things that need to be done in future updates
 * [ ] Move to ESP-IDF Platform
 
 ## Latest Changelog
-* 2.10.0:
+* 3.1.0 (WIP):
+     * [x] Port to [Waveshare ESP32-P4-WIFI5 5inch display](https://www.waveshare.com/esp32-p4-wifi6-touch-lcd-5.htm?&aff_id=179888) thanks to @fermintm
+     * [x] Port to [Heltec WiFi Lora Expansion kit V2](https://heltec.org/project/v4-r8-ex/) thanks to @valleytechsolutions
+     * [ ] Port to [LCDwiki ES3C35P](https://www.lcdwiki.com/3.5inch_ESP32-S3_Display) thanks to @EnygmaINC
+     * [ ] Port to [Cerberus by 463n7.io](https://463n7.io/products/cerberus-development-board)
+
+* 3.0.0:
+     * [x] Port to [M5 Stack PaperDIY](https://shop.m5stack.com/products/paperdiy-complete-kit-esp32-s3?ref=Pirata)
+     * [x] Port to [SeeedStudio Wio Tracker L2"](https://wiki.seeedstudio.com/meshtastic_wio_tracker_l2_intro/)
+     * [x] Port to [Elecrow ThinkNode M9"](https://www.elecrow.com/thinknode-m9-meshcore-communication-terminal-with-full-keyboard-2-4inch-lcd-esp32-s3-lr1110-gps-2300mah.html)
      * [x] Port to [SeeedStudio XIAO ESP32C5](https://www.seeedstudio.com/Seeed-Studio-XIAO-ESP32C5-p-6609.html?sensecap_affiliate=dhriNBA&referring_service=link) on **Headless** environment
+     * [x] Port to [SeeedStudio XIAO 1.47'' Touch Display (ESP32-S3)](https://wiki.seeedstudio.com/getting_started_1.47_inch_touch_display_esp32s3/)
      * [x] Port to [SeeedStudio XIAO ESP32S3 Plus](https://www.seeedstudio.com/Seeed-Studio-XIAO-ESP32S3-Plus-p-6361.html?sensecap_affiliate=dhriNBA&referring_service=link) on **Headless** environment
      * [x] Port to [SeeedStudio reTerminal D1001 8"](https://www.seeedstudio.com/reTerminal-D1001-p-6729.html?sensecap_affiliate=dhriNBA&referring_service=link)
      * [x] Port to [SeeedStudio reTerminal E1001 Monochrome e-Paper Display](https://www.seeedstudio.com/reTerminal-E1001-p-6534.html?sensecap_affiliate=dhriNBA&referring_service=link)
      * [x] Port to [SeeedStudio SenseCAP Indicator](https://www.seeedstudio.com/SenseCAP-Indicator-D1L-for-Meshtastic-p-6304.html?sensecap_affiliate=dhriNBA&referring_service=link)
      * [x] Port to [Waveshare ESP32-S3 2.06inch AMOLED Touch Watch](https://www.waveshare.com/esp32-s3-touch-amoled-2.06.htm?&aff_id=179888), thanks to @nevelate
+     * [x] Port to [Waveshare ESP32-C5-Touch-LCD-3.5](https://www.waveshare.com/esp32-c5-touch-lcd-3.5.htm?&aff_id=179888)
+     * [x] Port to [ESP32-S3 ES3C28P 4.0"](https://www.lcdwiki.com/4.0inch_ESP32-S3_Display)
      * [x] **BETA**: [XTeink X4 Pro](https://www.xteink.com/products/xteink-x4-pro-pocket-ereader) Validated UC8xxx display.
+     * [x] **Added** Changing Icon over battery bar on supported devices.
      * [x] **Added** Option to control bootscreen time (from 1 to 5 seconds).
      * [x] **Added** Option to disable starting Launcher from DeepSleep. Some e-ink firmwares (CrossInk, CrossPoint etc..)  use agressive deepsleep controls to save energy, and by default it used to trigger Launcher bootscreen, adding time to the device/firmware recovery. Now you can Disable this behaviour and trigger Launcher only on Power On reason. Use it with care, and in devices with exposed RST button, otherwise getting back to Launcher can be impossible on some devices
      * [x] **Added** Option to start Launcher when a button is pressed during a restart. This is a siruation where you will only see the Launcher bootscreen if you Turn on/Restart/recover from deepsleep the device if that configured button is pressed. Combined with the previous option it makes Launcher *stealthy*, and will only show up if you want. Boot Button can't be configured for this function, and it is available only on devices with GPIO driven buttons available (Touchscreen/keyboard/encoder only devices will not have this option)
+     * [x] **FIXED** Serial command now accept spaces on wifi SSID and Passwords using quotes `wifi add "My SSID Network" "my p@sSw0rd"` [issue](https://github.com/bmorcelli/Launcher/issues/454)
      * [x] **FIXED** `Lilygo T-Watch Ultra` and `Lilygo T-Display S3 Amoled Plus` touchscreen
      * [x] **FIXED** `M5Stack Tab5` OTA function randomly crashing.
      * [x] **Changed** `M4Stack Paper Mono` display backend.
+
+<details>
+  <summary><h2>Older Changelogs</h2></summary>
 
 * 2.9.1:
      * [x] Fix **M5-Paper Mono** rendering and touch issues.
@@ -169,9 +188,6 @@ Things that need to be done in future updates
      * [x] Fix M5Stack PaperS3 touchscreen https://github.com/bmorcelli/Launcher/issues/338
      * [x] Fix WebUI OTA installation
      * [x] Added "dev" option to Reset Config and wifi credentials
-
-<details>
-  <summary><h2>Older Changelogs</h2></summary>
 
 * 2.7.2:
      * [x] Adjusted boot logic, now it works as it was before.

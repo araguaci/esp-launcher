@@ -46,7 +46,8 @@
 // every InputHandler() cycle.
 
 // For HAS_TOUCH with any TOUCH_CTRL_* set (XPT2046, GT911, CST8XX, FT6X36,
-// GT9895, HI8561 -- see src/hal/README.md for which chip each one is):
+// GT9895, HI8561, AXS5106L -- see src/hal/README.md for which chip each one
+// is):
 // #include "hal/device.h"
 // #include "hal/inputs/touch.h"
 // static DeviceTouch touchCfg() {
@@ -124,6 +125,18 @@ void _late_setup_gpio() {}
 int getBattery() {
     // With GAUGE_BQ27220 set: return hal_gauge_get_percent();
     return 0;
+}
+
+/***************************************************************************************
+** Function name: isCharging()
+** location: display.cpp
+** Description:   true while charging: draws a bolt on the battery icon. Optional, the
+**                 weak default returns false (e.g. a plain ANALOG_BAT_PIN divider).
+***************************************************************************************/
+bool isCharging() {
+    // With GAUGE_BQ27220 set: return hal_gauge_is_charging();
+    // With PMIC_BQ25896 set:  return hal_pmic_is_charging();
+    return false;
 }
 
 /*********************************************************************
